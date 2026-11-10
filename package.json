@@ -1,0 +1,33 @@
+{
+  "name": "library-manager-ui",
+  "version": "1.0.0",
+  "description": "this is just a small web for control the inventory  of a library",
+  "license": "ISC",
+  "author": "ysra182@gmail.com",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "axios": "^1.20.0",
+    "chart.js": "^4.5.1",
+    "pinia": "^4.0.3",
+    "primeicons": "^8.0.0",
+    "primevue": "^5.0.1",
+    "vue-chartjs": "^5.3.4",
+    "vue-router": "^4.6.4",
+    "vuetify": "^4.1.12"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vite-plugin-vuetify": "^2.1.3",
+    "vue-tsc": "^3.3.11"
+  }
+}
