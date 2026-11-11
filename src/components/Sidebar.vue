@@ -13,14 +13,24 @@
           to="/sales"
         />
         <v-list-item
+          prepend-icon="mdi-cart-arrow-down"
+          title="Compras"
+          to="/purchases"
+        />
+        <v-list-item
           prepend-icon="mdi-package-variant"
           title="Productos"
           to="/products"
         />
         <v-list-item
-          prepend-icon="mdi-plus-box"
-          title="Agregar Producto"
-          to="/add-product"
+          prepend-icon="mdi-truck"
+          title="Proveedores"
+          to="/providers"
+        />
+        <v-list-item
+          prepend-icon="mdi-ruler"
+          title="Unidades"
+          to="/units"
         />
         <v-list-item
           prepend-icon="mdi-chart-bar"
@@ -47,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 
 const isAuthenticated = computed(() => !!localStorage.getItem('token'))
 
