@@ -2,16 +2,33 @@
     <v-form v-model="valid" @submit.prevent="onSubmit">
         <v-text-field
             v-model="form.name"
-            label="Nombre"
+            label="nombre"
             :rules="[rules.required]"
             outlined
             dense
         />
 
         <v-text-field
-            v-model="form.contact"
-            label="Contacto"
-            :rules="[rules.required]"
+            v-model="form.phoneNumber"
+            label="telefono"
+            :rules="[rules.phone]"
+            outlined
+            dense
+        />
+
+        <v-text-field
+            v-model="form.mobilePhoneNumber"
+            label="celular"
+            :rules="[rules.phone]"
+            outlined
+            dense
+        />
+
+        <v-text-field
+            v-model="form.email"
+            label="Email"
+            type="email"
+            :rules="[rules.email]"
             outlined
             dense
         />
@@ -32,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineProps, defineEmits } from 'vue'
+import { ref, watch } from 'vue'
 import type { Provider } from '@/services/providers.ts'
 
 const props = defineProps<{
@@ -49,11 +66,15 @@ const valid = ref(false)
 
 const form = ref({
   name: '',
-  contact: ''
+  phoneNumber: '',
+  mobilePhoneNumber: '',
+  email: ''
 })
 
 const rules = {
-  required: (v: any) => !!v || 'Este campo es obligatorio'
+  required: (v: string) => !!v || 'Este campo es obligatorio',
+  phone: (v: string) => !v || /^\+?[0-9\s()-]{7,20}$/.test(v) || 'Ingrese un teléfono válido',
+  email: (v: string) => !v || /.+@.+\..+/.test(v) || 'Ingrese un correo válido'
 }
 
 const isEditing = ref(false)
@@ -63,7 +84,9 @@ watch(() => props.provider, (newProvider) => {
     isEditing.value = true
     form.value = {
       name: newProvider.name,
-      contact: newProvider.contact
+      phoneNumber: newProvider.phoneNumber,
+      mobilePhoneNumber: newProvider.mobilePhoneNumber,
+      email: newProvider.email
     }
   } else {
     resetForm()
@@ -74,7 +97,9 @@ function resetForm() {
   isEditing.value = false
   form.value = {
     name: '',
-    contact: ''
+    phoneNumber: '',
+    mobilePhoneNumber: '',
+    email: ''
   }
   valid.value = false
 }

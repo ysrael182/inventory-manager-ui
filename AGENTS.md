@@ -59,7 +59,6 @@ src/
 │   ├── Dashboard.vue       # Overview stats/charts
 │   ├── Login.vue           # Authentication page
 │   ├── ProductTable.vue    # Product listing with CRUD
-│   ├── AddProductForm.vue  # Add new product page
 │   ├── SalesTable.vue      # Sales listing
 │   └── ReportPage.vue      # Charts/reports
 └── utils/
@@ -94,7 +93,6 @@ src/
 |------|-----------|------|
 | `/` | Dashboard | ✅ |
 | `/products` | ProductTable | ✅ |
-| `/add-product` | AddProductForm | ✅ |
 | `/sales` | SalesTable | ✅ |
 | `/reports` | ReportPage | ✅ |
 | `/login` | Login | ❌ |

@@ -2,94 +2,74 @@
   <v-container>
     <v-data-table
       :headers="headers"
-      :items="products"
+      :items="saleRows"
+      :loading="loading"
       class="elevation-2"
     >
       <template v-slot:top>
         <v-toolbar flat>
           <v-toolbar-title>📦 Registro de Ventas</v-toolbar-title>
           <v-spacer />
-          <v-btn color="primary" prepend-icon="mdi-plus" @click="dialog = true">
+          <v-btn color="primary" prepend-icon="mdi-plus" to="/sales/new">
             Registrar Nueva Venta
           </v-btn>
         </v-toolbar>
       </template>
 
-      <template v-slot:item.actions="{ item }">
-        <v-btn
-            variant="text"
-            color="primary"
-            size="small"
-            prepend-icon="mdi-pencil"
-            @click="editItem(item)"
-        >
-            Editar
-        </v-btn>
-
-        <v-btn
-            variant="text"
-            color="error"
-            size="small"
-            prepend-icon="mdi-delete"
-            @click="deleteItem(item)"
-        >
-            Eliminar
-        </v-btn>
+      <template v-slot:item.productNames="{ value }">
+        <div class="product-list">{{ value }}</div>
       </template>
-
     </v-data-table>
-    <v-dialog v-model="dialog" max-width="600">
-      <v-card>
-        <v-card-title>Nueva Venta</v-card-title>
-        <v-card-text>
-          <NewSaleForm @create="addSale" @cancel="dialog = false" />
-        </v-card-text>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { priceFormatter } from '@/utills/formatPrice.ts'
-import NewSaleForm from '@/components/NewSaleForm.vue'
+import { getSales, type Sale } from '@/services/sales.ts'
+import { useToastStore } from '@/store/toast.ts'
 
-const dialog = ref(false)
+const loading = ref(false)
+const sales = ref<Sale[]>([])
+const toast = useToastStore()
 
 const headers = ref([
   { title: 'Productos vendidos', key: 'productNames' },
-  { title: 'Detalle de venta', key: 'salesDetails' },
-  { title: 'Total de venta', key: 'salesPrice' },
-  { title: 'Fecha de venta', key: 'saleDate' },
-  { title: 'Acciones', key: 'actions', sortable: false } // 👈 new column
+  { title: 'Nota de la venta', key: 'note' },
+  { title: 'Total de venta', key: 'total' },
+  { title: 'Fecha de venta', key: 'saleDate' }
 ])
 
-const products = ref([
-  { productNames: 'Laptop 1 unidades, \n Mouse: 2 unidades', salesDetails: 'El cliente no pago', salesPrice: priceFormatter.format(12000), saleDate: '2023-01-15' },
-  { productNames: 'Mouse', salesDetails: '', salesPrice: priceFormatter.format(1000), saleDate: '2023-01-16' },
-  { productNames: 'Keyboard', salesDetails: '', salesPrice: priceFormatter.format(1350), saleDate: '2023-01-17' },
-  { productNames: 'Monitor', salesDetails: '', salesPrice: priceFormatter.format(3000), saleDate: '2023-01-18' },
-  { productNames: 'Cinta', salesDetails: '', salesPrice: priceFormatter.format(750), saleDate: '2023-01-19' }  
-])
+const saleRows = computed(() => sales.value.map(sale => {
+  const items = sale.items ?? sale.soldItems ?? []
+  return {
+    ...sale,
+    productNames: items
+      .map(item => `${item.product?.name ?? `Producto ${item.productId}`}\ncantidad: ${item.qty}`)
+      .join('\n\n'),
+    note: sale.note,
+    total: priceFormatter.format(sale.total),
+    saleDate: sale.saleDate ?? sale.createdAt ?? ''
+  }
+}))
 
-function addSale(sale: any) {
-  products.value.push({
-    productNames: sale.productNames,
-    salesDetails: sale.salesDetails,
-    salesPrice: priceFormatter.format(Number(sale.salesPrice)),
-    saleDate: sale.saleDate
-  })
-  dialog.value = false
+async function fetchSales() {
+  loading.value = true
+  try {
+    sales.value = await getSales()
+  } catch (error) {
+    console.error('Error fetching sales:', error)
+    toast.show('Error al cargar las ventas', 'error')
+  } finally {
+    loading.value = false
+  }
 }
 
-function editItem(item: any) {
-  console.log('Editing:', item)
-  // You can open a dialog or navigate to an edit form here
-}
-
-function deleteItem(item: any) {
-  console.log('Deleting:', item)
-  // You can remove the item from products.value here
-  products.value = products.value.filter(p => p !== item)
-}
+onMounted(fetchSales)
 </script>
+
+<style scoped>
+.product-list {
+  white-space: pre-line;
+}
+</style>

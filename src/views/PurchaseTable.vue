@@ -17,9 +17,19 @@
       </template>
 
       <template v-slot:item.products="{ item }">
-        <span v-if="item.items.length">
-          {{ item.items.map(purchaseItem => `Producto #${purchaseItem.productId}: ${purchaseItem.qty} unidades`).join(', ') }}
-        </span>
+        <div v-if="item.items.length">
+          <div
+            v-for="(purchaseItem, index) in item.items"
+            :key="purchaseItem.id"
+          >
+            <div>{{ purchaseItem.product?.name ?? `Producto #${purchaseItem.productId}` }}</div>
+            <div>{{ purchaseItem.qty }} unidades</div>
+            <v-divider
+              v-if="index < item.items.length - 1"
+              class="my-2"
+            />
+          </div>
+        </div>
         <span v-else>Sin productos</span>
       </template>
 

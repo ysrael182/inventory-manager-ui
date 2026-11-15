@@ -1,5 +1,5 @@
 <template>
-  <v-navigation-drawer app permanent>
+  <v-navigation-drawer app permanent class="app-sidebar">
     <v-list nav>
       <template v-if="isAuthenticated">
         <v-list-item

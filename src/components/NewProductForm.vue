@@ -26,6 +26,8 @@
             outlined
             dense
             prefix="$"
+            hint="precio de venta"
+            persistent-hint
         />
 
         <!-- Cantidad -->
@@ -76,10 +78,10 @@
             dense
         />
 
-          <!-- Nota de la compra -->
+          <!-- Descripción -->
         <v-textarea
-            v-model="form.note"
-            label="Nota de la compra"
+            v-model="form.description"
+            label="Descripción"
             outlined
             dense
         />
@@ -126,8 +128,7 @@ const form = ref({
   unitId: '' as string | number,
   providers: [] as number[],
   description: '',
-  image: null,
-  note: ''
+  image: null
 })
 
 const units = ref<Unit[]>([])
@@ -181,8 +182,7 @@ watch(() => props.product, (newProduct) => {
       unitId: newProduct.unitId,
       providers: newProduct.providers?.map(p => p.id) || [],
       description: newProduct.description,
-      image: null,
-      note: newProduct.note ?? ''
+      image: null
     }
   } else {
     resetForm()
@@ -199,8 +199,7 @@ function resetForm() {
     unitId: '' as string | number,
     providers: [] as number[],
     description: '',
-    image: null,
-    note: ''
+    image: null
   }
   valid.value = false
 }

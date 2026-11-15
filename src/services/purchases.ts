@@ -6,6 +6,9 @@ export interface PurchaseItem {
   qty: number
   purchaseId: number
   productId: number
+  product?: {
+    name: string
+  }
 }
 
 export interface Purchase {

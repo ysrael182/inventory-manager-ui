@@ -69,7 +69,9 @@ const toast = useToastStore()
 
 const headers = ref([
   { title: 'Nombre', key: 'name' },
-  { title: 'Contacto', key: 'contact' },
+  { title: 'Teléfono', key: 'phoneNumber' },
+  { title: 'Celular', key: 'mobilePhoneNumber' },
+  { title: 'Email', key: 'email' },
   { title: 'Acciones', key: 'actions', sortable: false }
 ])
 

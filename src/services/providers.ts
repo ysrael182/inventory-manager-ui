@@ -3,7 +3,9 @@ import api from './api'
 export interface Provider {
   id: number
   name: string
-  contact: string
+  phoneNumber: string
+  mobilePhoneNumber: string
+  email: string
   createdAt: string
   updatedAt: string
 }

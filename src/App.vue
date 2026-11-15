@@ -1,8 +1,11 @@
 <template>
   <v-app>
     <!-- Top bar -->
-    <v-app-bar app>
-      <v-app-bar-title>MichiTech Registro de Ventas</v-app-bar-title>
+    <v-app-bar app class="app-topbar">
+      <v-app-bar-title class="app-brand">
+        <v-icon icon="mdi-bookshelf" />
+        MichiTech Registro de Ventas
+      </v-app-bar-title>
     </v-app-bar>
 
     <!-- Sidebar -->
