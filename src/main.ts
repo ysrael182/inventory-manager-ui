@@ -6,6 +6,7 @@ import { createPinia } from 'pinia'
 // Vuetify setup
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
+import { es } from 'vuetify/locale'
 import './assets/main.css'
 import '@mdi/font/css/materialdesignicons.css'
 
@@ -24,6 +25,18 @@ const vuetify = createVuetify(
                     success: '#318369',
                     warning: '#d59a50',
                     info: '#4685a0',
+                },
+            },
+        },
+    },
+    locale: {
+        locale: 'es',
+        messages: {
+            es: {
+                ...es,
+                dataFooter: {
+                    ...es.dataFooter,
+                    itemsPerPageText: 'Artículos por página:',
                 },
             },
         },

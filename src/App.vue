@@ -1,9 +1,13 @@
 <template>
   <v-app>
     <!-- Top bar -->
-    <v-app-bar app class="app-topbar">
+    <v-app-bar app class="app-topbar" height="80">
       <v-app-bar-title class="app-brand">
-        <v-icon icon="mdi-bookshelf" />
+        <img
+          class="app-brand-logo"
+          src="@/assets/library-icon.png"
+          alt="Michi-Tech library logo"
+        />
         MichiTech Registro de Ventas
       </v-app-bar-title>
     </v-app-bar>

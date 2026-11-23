@@ -1,5 +1,13 @@
 <template>
   <v-form ref="form" @submit.prevent="onSubmit">
+    <v-text-field
+      v-model="sale.saleDate"
+      label="Fecha de venta"
+      type="date"
+      :rules="[rules.required]"
+      required
+    />
+
     <v-autocomplete
       v-model="selectedProduct"
       :items="availableProducts"
@@ -85,6 +93,34 @@
           />
         </v-col>
 
+        <v-col cols="11">
+          <v-alert
+            type="warning"
+            variant="tonal"
+            density="compact"
+            icon="mdi-information-outline"
+            class="pa-2"
+          >
+            <v-checkbox
+              v-model="item.updateQty"
+              label="Ajustar inventario"
+              density="compact"
+              hide-details
+              class="inventory-adjustment-checkbox"
+            />
+            <div class="inventory-adjustment-details ml-8">
+              Marcado: descuenta la cantidad vendida; al editar, solo aplica la diferencia.
+              Desmarcado: el inventario no cambia.
+            </div>
+            <div class="inventory-adjustment-details font-weight-medium ml-8 mt-1">
+              Stock después de guardar:
+              <span class="font-weight-bold">
+                {{ stockAfterSave(item) ?? 'no disponible' }}
+              </span>
+            </div>
+          </v-alert>
+        </v-col>
+
         <v-col cols="1" class="text-right">
           <v-btn
             icon="mdi-delete"
@@ -122,7 +158,7 @@
         :disabled="sale.products.length === 0 || loadingProducts || saving"
         :loading="saving"
       >
-        Registrar venta
+        {{ initialSale ? 'Actualizar venta' : 'Registrar venta' }}
       </v-btn>
     </v-card-actions>
   </v-form>
@@ -147,12 +183,15 @@ import { computed, onMounted, ref } from 'vue'
 import type { VForm } from 'vuetify/components'
 import NewProductForm from '@/components/NewProductForm.vue'
 import { createProduct, getProducts, type Product } from '@/services/products.ts'
+import type { Sale } from '@/services/sales.ts'
 import { useToastStore } from '@/store/toast.ts'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   saving?: boolean
+  initialSale?: Sale | null
 }>(), {
-  saving: false
+  saving: false,
+  initialSale: null
 })
 
 interface SaleItem {
@@ -161,20 +200,24 @@ interface SaleItem {
   originalPrice: number
   price: number
   quantity: number
+  updateQty: boolean
+  originalQty: number
   unitName: string
   availableQty: number
 }
 
 interface SalePayload {
-  products: SaleItem[]
+  products: Array<Pick<SaleItem, 'id' | 'quantity' | 'price' | 'updateQty'>>
   subtotal: number
   discount: number
   total: number
   note: string
+  saleDate: string
 }
 
 const emit = defineEmits<{
   create: [sale: SalePayload]
+  update: [sale: SalePayload]
   cancel: []
 }>()
 
@@ -185,9 +228,16 @@ const productDialog = ref(false)
 const productFormKey = ref(0)
 const selectedProduct = ref<Product | null>(null)
 const availableProducts = ref<Product[]>([])
-const sale = ref({ products: [] as SaleItem[], note: '' })
+const sale = ref({
+  products: [] as SaleItem[],
+  note: '',
+  saleDate: props.initialSale?.saleDate?.slice(0, 10) ??
+    props.initialSale?.createdAt?.slice(0, 10) ??
+    getCurrentDate()
+})
 
 const rules = {
+  required: (value: unknown) => Boolean(value) || 'Este campo es obligatorio',
   positiveInteger: (value: unknown) =>
     (Number.isInteger(Number(value)) && Number(value) > 0) ||
     'Debe ser un entero mayor que cero',
@@ -217,7 +267,34 @@ async function fetchProducts() {
   loadingProducts.value = true
   try {
     const response = await getProducts()
-    availableProducts.value = response.data.filter(product => product.qty > 0)
+    const saleItems = props.initialSale?.items ?? props.initialSale?.soldItems ?? []
+    const existingProductIds = new Set(saleItems.map(item => item.productId))
+    availableProducts.value = response.data.filter(
+      product => product.qty > 0 || existingProductIds.has(product.id)
+    )
+
+    if (props.initialSale) {
+      sale.value = {
+        note: props.initialSale.note,
+        saleDate: props.initialSale.saleDate?.slice(0, 10) ??
+          props.initialSale.createdAt?.slice(0, 10) ??
+          getCurrentDate(),
+        products: saleItems.map(item => {
+          const product = response.data.find(product => product.id === item.productId)
+          return {
+            id: item.productId,
+            name: product?.name ?? item.product?.name ?? `Producto ${item.productId}`,
+            originalPrice: product?.price ?? item.price,
+            price: item.price,
+            quantity: item.qty,
+            updateQty: true,
+            originalQty: item.qty,
+            unitName: product?.unit?.abbreviation || product?.unit?.name || 'unidad',
+            availableQty: (product?.qty ?? 0) + item.qty
+          }
+        })
+      }
+    }
   } catch (error) {
     console.error('Error fetching products for sale:', error)
     toast.show('Error al cargar los productos', 'error')
@@ -243,12 +320,24 @@ function addProduct(product: Product | null) {
       originalPrice: product.price,
       price: product.price,
       quantity: 1,
+      updateQty: true,
+      originalQty: 0,
       unitName: product.unit?.abbreviation || product.unit?.name || 'unidad',
       availableQty: product.qty
     })
   }
 
   selectedProduct.value = null
+}
+
+function stockAfterSave(item: SaleItem): number | null {
+  const currentStock = item.availableQty - item.originalQty
+  if (!item.updateQty) return currentStock
+
+  const quantityChange = Number(item.quantity) - item.originalQty
+  if (!Number.isFinite(quantityChange)) return null
+
+  return currentStock - quantityChange
 }
 
 async function createProductForSale(
@@ -276,24 +365,56 @@ async function onSubmit() {
   const result = await form.value?.validate()
   if (!result?.valid || sale.value.products.length === 0) return
 
-  const products = sale.value.products.map(item => ({ ...item }))
+  const products = sale.value.products.map(item => ({
+    id: item.id,
+    quantity: item.quantity,
+    price: item.price,
+    updateQty: item.updateQty
+  }))
 
-  emit('create', {
+  const payload = {
     products,
     subtotal: Number(subtotalCalculated.value.toFixed(2)),
     discount: Number(discountCalculated.value.toFixed(2)),
     total: Number(totalCalculated.value.toFixed(2)),
-    note: sale.value.note
-  })
+    note: sale.value.note,
+    saleDate: new Date(`${sale.value.saleDate}T00:00:00.000Z`).toISOString()
+  }
+
+  if (props.initialSale) {
+    emit('update', payload)
+  } else {
+    emit('create', payload)
+  }
 }
 
 function resetForm() {
-  sale.value = { products: [], note: '' }
+  sale.value = { products: [], note: '', saleDate: getCurrentDate() }
   selectedProduct.value = null
   form.value?.resetValidation()
+}
+
+function getCurrentDate(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 defineExpose({ resetForm })
 
 onMounted(fetchProducts)
 </script>
+
+<style scoped>
+.inventory-adjustment-checkbox :deep(.v-label) {
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 1;
+}
+
+.inventory-adjustment-details {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+</style>

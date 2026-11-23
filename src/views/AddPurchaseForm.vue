@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-card class="pa-6" elevation="4" max-width="800">
-      <v-card-title class="text-h6">Registrar Compra</v-card-title>
+      <v-card-title class="text-h6">{{ isEditing ? 'Editar Compra' : 'Registrar Compra' }}</v-card-title>
 
       <v-card-text>
         <v-form ref="formRef" v-model="valid" @submit.prevent="onSubmit">
@@ -58,7 +58,7 @@
               <v-col cols="5" sm="3">
                 <v-text-field
                   v-model.number="item.qty"
-                  label="Cantidad"
+                  :label="`Cantidad (${unitName(item)})`"
                   type="number"
                   min="1"
                   step="1"
@@ -88,6 +88,30 @@
                 />
               </v-col>
             </v-row>
+            <v-alert
+              type="warning"
+              variant="tonal"
+              density="compact"
+              icon="mdi-information-outline"
+              class="pa-2"
+            >
+              <v-checkbox
+                v-model="item.updateQty"
+                label="Ajustar el stock actual según la cantidad comprada"
+                density="compact"
+                hide-details
+              />
+              <div class="purchase-inventory-details ml-8">
+                Marcado: en una compra nueva suma la cantidad al stock; al editar, aplica la diferencia.
+                Desmarcado: el stock actual no cambia.
+              </div>
+              <div class="purchase-inventory-details font-weight-medium ml-8 mt-1">
+                Stock estimado después de guardar:
+                <span class="font-weight-bold">
+                  {{ stockAfterSave(item) ?? 'no disponible' }}
+                </span>
+              </div>
+            </v-alert>
           </v-card>
 
           <v-btn
@@ -97,7 +121,7 @@
             :loading="submitting"
             :disabled="!form.items.length"
           >
-            Registrar Compra
+            {{ isEditing ? 'Guardar Cambios' : 'Registrar Compra' }}
           </v-btn>
           <v-btn class="mt-4 ml-2" variant="text" to="/purchases">
             Cancelar
@@ -123,18 +147,26 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import NewProductForm from '@/components/NewProductForm.vue'
-import { createPurchase } from '@/services/purchases.ts'
+import {
+  createPurchase,
+  getPurchase,
+  updatePurchase,
+  type Purchase
+} from '@/services/purchases.ts'
 import { createProduct, getProducts, type Product } from '@/services/products.ts'
 import { useToastStore } from '@/store/toast.ts'
 
 interface PurchaseFormItem {
   productId: number
   name: string
+  unitName: string
   qty: number
   price: number
+  updateQty: boolean
+  originalQty: number
 }
 
 interface FormValidation {
@@ -142,7 +174,9 @@ interface FormValidation {
 }
 
 const router = useRouter()
+const route = useRoute()
 const toast = useToastStore()
+const isEditing = computed(() => route.name === 'EditPurchase')
 const formRef = ref<FormValidation | null>(null)
 const valid = ref(false)
 const submitting = ref(false)
@@ -168,6 +202,51 @@ const rules = {
     (Number.isFinite(Number(value)) && Number(value) >= 0) || 'Debe ser un número igual o mayor que cero'
 }
 
+function toDateInputValue(value: string | null): string {
+  if (!value) return ''
+
+  const localizedDate = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value)
+  if (localizedDate) {
+    const [, day, month, year] = localizedDate
+    return `${year}-${month}-${day}`
+  }
+
+  return value.slice(0, 10)
+}
+
+async function loadPurchase(id: string | string[] | undefined) {
+  const purchaseId = Number(id)
+  if (!Number.isInteger(purchaseId) || purchaseId <= 0) {
+    toast.show('Compra no válida', 'error')
+    await router.push('/purchases')
+    return
+  }
+
+  try {
+    const purchase: Purchase = await getPurchase(purchaseId)
+    form.value.note = purchase.note
+    form.value.purchaseDate = toDateInputValue(purchase.purchaseDate)
+    form.value.items = (purchase.items ?? []).map(item => ({
+      productId: item.productId,
+      name: item.product?.name ?? `Producto #${item.productId}`,
+      unitName: item.product?.unit?.abbreviation || item.product?.unit?.name || '',
+      qty: item.qty,
+      price: item.price,
+      updateQty: false,
+      originalQty: item.qty
+    }))
+  } catch (error) {
+    console.error('Error fetching purchase:', error)
+    toast.show('Error al cargar la compra', 'error')
+    await router.push('/purchases')
+  }
+}
+
+function unitName(item: PurchaseFormItem): string {
+  const productUnit = products.value.find(product => product.id === item.productId)?.unit
+  return productUnit?.abbreviation || productUnit?.name || item.unitName || 'unidad'
+}
+
 async function fetchProducts() {
   loadingProducts.value = true
   try {
@@ -191,12 +270,28 @@ function addProduct(product: Product | null) {
     form.value.items.push({
       productId: product.id,
       name: product.name,
+      unitName: product.unit?.abbreviation || product.unit?.name || 'unidad',
       qty: 1,
-      price: product.price
+      price: product.price,
+      updateQty: false,
+      originalQty: 0
     })
   }
 
   selectedProduct.value = null
+}
+
+function stockAfterSave(item: PurchaseFormItem): number | null {
+  const currentStock = products.value.find(product => product.id === item.productId)?.qty
+  if (currentStock === undefined) return null
+
+  if (!item.updateQty) return currentStock
+
+  const quantity = Number(item.qty)
+  if (!Number.isFinite(quantity)) return null
+
+  const quantityChange = isEditing.value ? quantity - item.originalQty : quantity
+  return currentStock + quantityChange
 }
 
 function removeProduct(index: number) {
@@ -226,20 +321,47 @@ async function onSubmit() {
 
   submitting.value = true
   try {
-    await createPurchase({
+    const purchaseData = {
       note: form.value.note,
       purchaseDate: form.value.purchaseDate,
-      items: form.value.items.map(({ productId, qty, price }) => ({ productId, qty, price }))
-    })
-    toast.show('Compra registrada correctamente', 'success')
+      items: form.value.items.map(({ productId, qty, price, updateQty }) => ({
+        productId,
+        qty,
+        price,
+        updateQty
+      }))
+    }
+
+    if (isEditing.value) {
+      await updatePurchase(Number(route.params.id), purchaseData)
+      toast.show('Compra actualizada correctamente', 'success')
+    } else {
+      await createPurchase(purchaseData)
+      toast.show('Compra registrada correctamente', 'success')
+    }
     await router.push('/purchases')
   } catch (error) {
-    console.error('Error creating purchase:', error)
-    toast.show('Error al registrar la compra', 'error')
+    console.error('Error saving purchase:', error)
+    toast.show(isEditing.value ? 'Error al actualizar la compra' : 'Error al registrar la compra', 'error')
   } finally {
     submitting.value = false
   }
 }
 
+watch(
+  () => route.params.id,
+  id => {
+    if (isEditing.value) void loadPurchase(id)
+  },
+  { immediate: true }
+)
+
 onMounted(fetchProducts)
 </script>
+
+<style scoped>
+.purchase-inventory-details {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+</style>

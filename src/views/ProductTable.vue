@@ -10,6 +10,27 @@
         <v-toolbar flat>
           <v-toolbar-title>📦 Lista de productos</v-toolbar-title>
           <v-spacer />
+          <v-text-field
+            v-if="searchOpen"
+            v-model="searchQuery"
+            label="Buscar productos"
+            density="compact"
+            hide-details
+            clearable
+            append-inner-icon="mdi-magnify"
+            class="mr-2"
+            style="max-width: 240px"
+            @keyup.enter="searchProducts"
+            @click:append-inner="searchProducts"
+            @click:clear="clearSearch"
+          />
+          <v-btn
+            v-else
+            icon="mdi-magnify"
+            variant="text"
+            aria-label="Buscar productos"
+            @click="searchOpen = true"
+          />
           <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
             Agregar Producto
           </v-btn>
@@ -34,21 +55,19 @@
       </template>
       <template v-slot:item.actions="{ item }">
         <v-btn
-          icon
+          icon="mdi-pencil"
+          variant="text"
           color="primary"
+          aria-label="Editar producto"
           @click="editProduct(item)"
-          title="Editar producto"
-        >
-          <v-icon>mdi-pencil</v-icon>
-        </v-btn>
+        />
         <v-btn
-          icon
+          icon="mdi-delete"
+          variant="text"
           color="error"
+          aria-label="Eliminar producto"
           @click="deleteProduct(item.id)"
-          title="Eliminar producto"
-        >
-          <v-icon>mdi-delete</v-icon>
-        </v-btn>
+        />
       </template>
     </v-data-table>
     
@@ -133,6 +152,8 @@
   const unitDialog = ref(false)
   const loading = ref(false)
   const products = ref<Product[]>([])
+  const searchOpen = ref(false)
+  const searchQuery = ref('')
   const editingProduct = ref<Product | null>(null)
   const editingProvider = ref<Provider | null>(null)
   const editingUnit = ref<Unit | null>(null)
@@ -148,23 +169,13 @@
     { title: 'Acciones', key: 'actions', sortable: false }
   ])
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (query = searchQuery.value.trim()) => {
     loading.value = true
     try {
-      const response = await getProducts()
-      
-      // Handle different response structures
-      let productsArray: Product[] = response.data
-      if (response.data && Array.isArray(response.data.data)) {
-        // Response is { data: [...] }
-        productsArray = response.data.data
-      } else if (response.data && Array.isArray(response.data.products)) {
-        // Response is { products: [...] }
-        productsArray = response.data.products
-      }
+      const response = await getProducts(query || undefined)
       
       // Format price for display - keep original price for editing
-      products.value = productsArray.map(product => ({
+      products.value = response.data.map(product => ({
         ...product,
         displayPrice: priceFormatter.format(product.price)
       }))
@@ -173,6 +184,13 @@
     } finally {
       loading.value = false
     }
+  }
+
+  const searchProducts = () => fetchProducts()
+
+  const clearSearch = () => {
+    searchQuery.value = ''
+    fetchProducts('')
   }
 
   const addProduct = async (newProduct: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'unit' | 'attributes' | 'soldItems'>) => {

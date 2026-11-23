@@ -16,7 +16,6 @@
               v-model="startDate"
               type="date"
               label="Fecha de inicio"
-              :max="endDate || undefined"
               hide-details="auto"
             />
           </v-col>
@@ -25,7 +24,6 @@
               v-model="endDate"
               type="date"
               label="Fecha de fin"
-              :min="startDate || undefined"
               hide-details="auto"
             />
           </v-col>
@@ -123,6 +121,28 @@
                 </p>
                 <div v-else style="height: 320px">
                   <Bar :data="purchaseChartData" :options="purchaseChartOptions" />
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+          <v-col cols="12">
+            <v-card variant="outlined">
+              <v-card-title class="text-wrap">Tendencia de ventas</v-card-title>
+              <v-card-text>
+                <p class="text-body-2 text-medium-emphasis mb-4">
+                  La línea facilita ver cómo cambia el total de ventas entre periodos. Usa el mismo periodo y filtros del gráfico de ventas.
+                </p>
+                <div v-if="salesChartLoading" class="d-flex justify-center py-8" role="status" aria-live="polite">
+                  <v-progress-circular indeterminate color="primary" aria-label="Cargando tendencia de ventas" />
+                </div>
+                <p v-else-if="salesChartError" class="text-body-2 text-medium-emphasis py-6">
+                  La tendencia no está disponible porque no se pudo cargar el gráfico de ventas.
+                </p>
+                <p v-else-if="salesPeriodReport.length === 0" class="text-body-2 text-medium-emphasis py-6">
+                  No hay ventas para mostrar en este periodo.
+                </p>
+                <div v-else style="height: 320px">
+                  <Line :data="salesTrendChartData" :options="salesTrendChartOptions" />
                 </div>
               </v-card-text>
             </v-card>
@@ -300,17 +320,20 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Bar } from 'vue-chartjs'
+import { Bar, Line } from 'vue-chartjs'
 import {
   BarElement,
   CategoryScale,
   Chart as ChartJS,
+  LineElement,
   LinearScale,
+  PointElement,
   Tooltip,
   type ChartData,
   type ChartOptions
 } from 'chart.js'
 import { priceFormatter } from '@/utills/formatPrice'
+import { formatDate, parseDateFilter } from '@/utills/formatDate'
 import {
   getProductSalesHistory,
   getProductSalesReport,
@@ -329,12 +352,8 @@ import {
   type UserSalesReportRow
 } from '@/services/reports'
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip)
+ChartJS.register(BarElement, CategoryScale, LineElement, LinearScale, PointElement, Tooltip)
 
-const dateFormatter = new Intl.DateTimeFormat('es-BO', {
-  dateStyle: 'medium',
-  timeZone: 'UTC'
-})
 const monthFormatter = new Intl.DateTimeFormat('es-BO', {
   month: 'short',
   year: 'numeric',
@@ -448,9 +467,11 @@ const userRows = computed(() => {
 })
 
 const validationError = computed(() => {
-  if (startDate.value && !isValidDate(startDate.value)) return 'La fecha de inicio no es válida.'
-  if (endDate.value && !isValidDate(endDate.value)) return 'La fecha de fin no es válida.'
-  if (startDate.value && endDate.value && startDate.value > endDate.value) {
+  const parsedStartDate = startDate.value ? parseDateFilter(startDate.value) : null
+  const parsedEndDate = endDate.value ? parseDateFilter(endDate.value) : null
+  if (startDate.value && !parsedStartDate) return 'La fecha de inicio no es válida.'
+  if (endDate.value && !parsedEndDate) return 'La fecha de fin no es válida.'
+  if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
     return 'La fecha de inicio no puede ser posterior a la fecha de fin.'
   }
   return ''
@@ -479,6 +500,21 @@ const salesChartData = computed<ChartData<'bar'>>(() => ({
   }]
 }))
 
+const salesTrendChartData = computed<ChartData<'line'>>(() => ({
+  labels: salesPeriodReport.value.map(item => formatPeriod(item.period)),
+  datasets: [{
+    label: 'Total de ventas',
+    data: salesPeriodReport.value.map(item => item.total),
+    borderColor: '#1976D2',
+    backgroundColor: 'rgba(25, 118, 210, 0.15)',
+    pointBackgroundColor: '#1976D2',
+    pointRadius: 4,
+    pointHoverRadius: 6,
+    fill: true,
+    tension: 0.3
+  }]
+}))
+
 const purchaseChartData = computed<ChartData<'bar'>>(() => ({
   labels: purchasePeriodReport.value.map(item => formatPeriod(item.period)),
   datasets: [{
@@ -489,15 +525,28 @@ const purchaseChartData = computed<ChartData<'bar'>>(() => ({
 }))
 
 const salesChartOptions = computed<ChartOptions<'bar'>>(() => makePeriodChartOptions('Total de ventas'))
+const salesTrendChartOptions = computed<ChartOptions<'line'>>(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: item => `Total de ventas: ${formatCurrency(Number(item.raw))}`
+      }
+    }
+  },
+  scales: {
+    x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+    y: {
+      beginAtZero: true,
+      ticks: { callback: value => formatCurrency(Number(value)) }
+    }
+  }
+}))
 const purchaseChartOptions = computed<ChartOptions<'bar'>>(() =>
   makePeriodChartOptions('Importe total de compras')
 )
-
-function isValidDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const date = new Date(`${value}T00:00:00.000Z`)
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
-}
 
 function formatCurrency(value: number): string {
   return priceFormatter.format(value)
@@ -513,9 +562,7 @@ function formatPeriod(value: string): string {
     const date = new Date(`${value}-01T00:00:00.000Z`)
     return Number.isNaN(date.getTime()) ? value : monthFormatter.format(date)
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-  const date = new Date(`${value}T00:00:00.000Z`)
-  return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date)
+  return formatDate(value)
 }
 
 function makePeriodChartOptions(metric: string): ChartOptions<'bar'> {
@@ -541,9 +588,11 @@ function makePeriodChartOptions(metric: string): ChartOptions<'bar'> {
 }
 
 function makeFilters(): ReportDateFilters {
+  const parsedStartDate = startDate.value ? parseDateFilter(startDate.value) : null
+  const parsedEndDate = endDate.value ? parseDateFilter(endDate.value) : null
   return {
-    ...(startDate.value ? { startDate: startDate.value } : {}),
-    ...(endDate.value ? { endDate: endDate.value } : {})
+    ...(parsedStartDate ? { startDate: parsedStartDate } : {}),
+    ...(parsedEndDate ? { endDate: parsedEndDate } : {})
   }
 }
 

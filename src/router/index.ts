@@ -21,6 +21,7 @@ const routes: Array<RouteRecordRaw> = [
   { path: '/sales/new', name: 'NewSales', component: NewSales, meta: { requiresAuth: true } },
   { path: '/purchases', name: 'PurchaseTable', component: PurchaseTable, meta: { requiresAuth: true } },
   { path: '/purchases/new', name: 'AddPurchase', component: AddPurchaseForm, meta: { requiresAuth: true } },
+  { path: '/purchases/:id/edit', name: 'EditPurchase', component: AddPurchaseForm, meta: { requiresAuth: true } },
   { path: '/reports', name: 'ReportPage', component: ReportPage,  meta: { requiresAuth: true } },
   { path: '/login', name: 'Login', component: Login }
 ]

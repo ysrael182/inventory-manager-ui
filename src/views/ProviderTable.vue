@@ -22,21 +22,19 @@
       </template>
       <template v-slot:item.actions="{ item }">
         <v-btn
-          icon
+          icon="mdi-pencil"
+          variant="text"
           color="primary"
+          aria-label="Editar proveedor"
           @click="editProvider(item)"
-          title="Editar proveedor"
-        >
-          <v-icon>mdi-pencil</v-icon>
-        </v-btn>
+        />
         <v-btn
-          icon
+          icon="mdi-delete"
+          variant="text"
           color="error"
+          aria-label="Eliminar proveedor"
           @click="deleteProvider(item.id)"
-          title="Eliminar proveedor"
-        >
-          <v-icon>mdi-delete</v-icon>
-        </v-btn>
+        />
       </template>
     </v-data-table>
     <v-dialog v-model="dialog" max-width="600">

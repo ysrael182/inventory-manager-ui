@@ -25,11 +25,13 @@ interface SaleFormData {
     id: number
     quantity: number
     price: number
+    updateQty: boolean
   }>
   subtotal: number
   discount: number
   total: number
   note: string
+  saleDate: string
 }
 
 const router = useRouter()
@@ -80,10 +82,12 @@ async function addSale(sale: SaleFormData) {
       discount: sale.discount,
       total: sale.total,
       note: sale.note,
+      saleDate: sale.saleDate,
       items: sale.products.map(item => ({
         productId: item.id,
         qty: item.quantity,
-        price: item.price
+        price: item.price,
+        updateQty: item.updateQty
       }))
     })
     toast.show('Venta registrada correctamente', 'success')

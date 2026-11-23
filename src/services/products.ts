@@ -54,7 +54,7 @@ export interface PaginatedResponse<T> {
 export type ProductsResponse = PaginatedResponse<Product>
 
 export async function getProducts(query?: string): Promise<ProductsResponse> {
-  const params = query ? { q: query } : {}
+  const params = query ? { query } : {}
   const response = await api.get<ProductsResponse>('/products', { params })
   return response.data
 }

@@ -22,21 +22,19 @@
       </template>
       <template v-slot:item.actions="{ item }">
         <v-btn
-          icon
+          icon="mdi-pencil"
+          variant="text"
           color="primary"
+          aria-label="Editar unidad"
           @click="editUnit(item)"
-          title="Editar unidad"
-        >
-          <v-icon>mdi-pencil</v-icon>
-        </v-btn>
+        />
         <v-btn
-          icon
+          icon="mdi-delete"
+          variant="text"
           color="error"
+          aria-label="Eliminar unidad"
           @click="deleteUnit(item.id)"
-          title="Eliminar unidad"
-        >
-          <v-icon>mdi-delete</v-icon>
-        </v-btn>
+        />
       </template>
     </v-data-table>
     <v-dialog v-model="dialog" max-width="600">
