@@ -1,8 +1,8 @@
 // src/router/authGuard.ts
-import { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
+import { NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
 
 function isAuthenticated(): boolean {
-  return !!localStorage.getItem('token') // or use Pinia store
+  return !!localStorage.getItem('token'); // or use Pinia store
 }
 
 export function authGuard(
@@ -11,8 +11,8 @@ export function authGuard(
   next: NavigationGuardNext
 ) {
   if (to.meta.requiresAuth && !isAuthenticated()) {
-    next({ name: 'Login' })
+    next({ name: 'Login' });
   } else {
-    next()
+    next();
   }
 }

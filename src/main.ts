@@ -1,51 +1,49 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-import { createPinia } from 'pinia'
+import { createApp } from 'vue';
+import App from './App.vue';
+import router from './router';
+import { createPinia } from 'pinia';
 
 // Vuetify setup
-import 'vuetify/styles'
-import { createVuetify } from 'vuetify'
-import { es } from 'vuetify/locale'
-import './assets/main.css'
-import '@mdi/font/css/materialdesignicons.css'
+import 'vuetify/styles';
+import { createVuetify } from 'vuetify';
+import { es } from 'vuetify/locale';
+import './assets/main.css';
+import '@mdi/font/css/materialdesignicons.css';
 
-const vuetify = createVuetify(
- {
-    theme: {
-        defaultTheme: 'light',
-        themes: {
-            light: {
-                colors: {
-                    primary: '#2d67ad',
-                    secondary: '#d59a50',
-                    background: '#f4f7fb',
-                    surface: '#ffffff',
-                    error: '#c84f4f',
-                    success: '#318369',
-                    warning: '#d59a50',
-                    info: '#4685a0',
-                },
-            },
+const vuetify = createVuetify({
+  theme: {
+    defaultTheme: 'light',
+    themes: {
+      light: {
+        colors: {
+          primary: '#2d67ad',
+          secondary: '#d59a50',
+          background: '#f4f7fb',
+          surface: '#ffffff',
+          error: '#c84f4f',
+          success: '#318369',
+          warning: '#d59a50',
+          info: '#4685a0',
         },
+      },
     },
-    locale: {
-        locale: 'es',
-        messages: {
-            es: {
-                ...es,
-                dataFooter: {
-                    ...es.dataFooter,
-                    itemsPerPageText: 'Artículos por página:',
-                },
-            },
+  },
+  locale: {
+    locale: 'es',
+    messages: {
+      es: {
+        ...es,
+        dataFooter: {
+          ...es.dataFooter,
+          itemsPerPageText: 'Artículos por página:',
         },
+      },
     },
- }
-)
+  },
+});
 
-const app = createApp(App)
-app.use(router)
-app.use(createPinia())
-app.use(vuetify)
-app.mount('#app')
+const app = createApp(App);
+app.use(router);
+app.use(createPinia());
+app.use(vuetify);
+app.mount('#app');
